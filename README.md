@@ -12,6 +12,9 @@ Right now, it's not very mature, because again, **<6 hours of development**, *ho
 - It can run a few system commands (like `shutdown`, `lock`, etc.)
 - Fuzzy searching
 
+## Showcase
+![rnux npm search](./assets/npm-search.png)
+
 ## Structure
 All the code is in `src/`
 - `src/features` : the features (web search, app launcher, calculator, etc.)
