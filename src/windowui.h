@@ -13,6 +13,7 @@
 #include <QFrame>
 #include <QParallelAnimationGroup>
 #include <QVariantAnimation>
+#include <QIcon>
 
 #include "features/feature_base.h"
 
@@ -25,6 +26,8 @@ public:
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
 private:
+    static QIcon loadIcon(const QString& iconName);
+
     QFont m_titleFont;
     QFont m_subtitleFont;
     QColor m_accentColor;

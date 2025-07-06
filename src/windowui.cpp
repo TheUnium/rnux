@@ -8,6 +8,11 @@
 #include <QEasingCurve>
 #include <QGraphicsPixmapItem>
 #include <QShowEvent>
+#include <QIcon>
+#include <QPixmap>
+#include <QStandardPaths>
+#include <QDir>
+#include <QFileInfo>
 #include <random>
 
 ModernItemDelegate::ModernItemDelegate(QObject* parent)
@@ -26,9 +31,66 @@ ModernItemDelegate::ModernItemDelegate(QObject* parent)
     m_subtitleFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
 }
 
+QIcon ModernItemDelegate::loadIcon(const QString& iconName) {
+    if (iconName.isEmpty()) {
+        return {};
+    }
+
+    if (QFileInfo(iconName).isAbsolute() && QFileInfo::exists(iconName)) {
+        return QIcon(iconName);
+    }
+
+    if (QIcon::hasThemeIcon(iconName)) {
+        return QIcon::fromTheme(iconName);
+    }
+
+    QStringList iconDirs = {
+        "/usr/share/icons",
+        "/usr/share/pixmaps",
+        "/usr/local/share/icons",
+        "/usr/local/share/pixmaps",
+        QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/icons"
+    };
+
+    QStringList iconExtensions = {"png", "svg", "xpm", "ico"};
+    QStringList iconSizes = {"24", "32", "48", "64", "128", "256"};
+
+    for (const QString& dir : iconDirs) {
+        for (const QString& ext : iconExtensions) {
+            if (QString fullPath = QString("%1/%2.%3").arg(dir, iconName, ext); QFileInfo::exists(fullPath)) {
+                return QIcon(fullPath);
+            }
+        }
+
+        for (const QString& size : iconSizes) {
+            for (const QString& ext : iconExtensions) {
+                if (QString fullPath = QString("%1/hicolor/%2x%2/apps/%3.%4").arg(dir, size, iconName, ext); QFileInfo::exists(fullPath)) {
+                    return QIcon(fullPath);
+                }
+            }
+        }
+
+        if (QDir iconDir(dir); iconDir.exists()) {
+            QStringList themeDirs = iconDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+            for (const QString& theme : themeDirs) {
+                for (const QString& size : iconSizes) {
+                    for (const QString& ext : iconExtensions) {
+                        if (QString fullPath = QString("%1/%2/%3x%3/apps/%4.%5").arg(dir, theme, size, iconName, ext); QFileInfo::exists(fullPath)) {
+                            return QIcon(fullPath);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return {};
+}
+
 void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
+    painter->setRenderHint(QPainter::SmoothPixmapTransform);
     QRect rect = option.rect;
     bool isSelected = option.state & QStyle::State_Selected;
 
@@ -56,13 +118,29 @@ void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
 
     QString title = index.data(Qt::DisplayRole).toString();
     QString subtitle = index.data(Qt::UserRole).toString();
+    QString iconName = index.data(Qt::UserRole + 1).toString();
 
-    // icon placeholder
-    // TODO: icon :pensive:
+    // icon
     QRect iconRect(rect.left() + 20, rect.center().y() - 12, 24, 24);
-    painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
-    painter->setBrush(Qt::NoBrush);
-    painter->drawRoundedRect(iconRect, 6, 6);
+    if (!iconName.isEmpty()) {
+        if (QIcon icon = loadIcon(iconName); !icon.isNull()) {
+            if (QPixmap pixmap = icon.pixmap(24, 24); !pixmap.isNull()) {
+                painter->drawPixmap(iconRect, pixmap);
+            } else {
+                painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
+                painter->setBrush(Qt::NoBrush);
+                painter->drawRoundedRect(iconRect, 6, 6);
+            }
+        } else {
+            painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
+            painter->setBrush(Qt::NoBrush);
+            painter->drawRoundedRect(iconRect, 6, 6);
+        }
+    } else {
+        painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRoundedRect(iconRect, 6, 6);
+    }
 
     // app name/title
     painter->setPen(isSelected ? QColor("#FFFFFF") : m_textColor);
@@ -168,6 +246,7 @@ void WindowUI::setupUI() {
     m_listView->setModel(m_model);
     m_listView->setItemDelegate(m_delegate);
     m_listView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_listView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_listView->setFocusPolicy(Qt::NoFocus);
@@ -282,6 +361,8 @@ void WindowUI::setResults(const QList<FeatureItem>& results) {
     for (const auto& item : results) {
         const auto modelItem = new QStandardItem(item.title);
         modelItem->setData(item.subtitle, Qt::UserRole);
+        modelItem->setData(item.icon, Qt::UserRole + 1);
+        modelItem->setFlags(modelItem->flags() & ~Qt::ItemIsEditable);
         m_model->appendRow(modelItem);
     }
 
