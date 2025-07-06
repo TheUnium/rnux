@@ -32,5 +32,4 @@ It's an app launcher. It looks good. That's kind of it. Other than that, it is p
 **Read more @ [Blog post](https://unium.in/blog/05-7-2025.html)**
 
 #### Oh yeah also....
-- For some reason, if you double-click an item, it lets you rename it (temporarily)? No idea why it's editable. So uh. Don't double-click items in the menu. Very simple bug fix, I know. Pretty sure it's like a one line fix, I think it'd like a single flag in-fact. But, you know what's easier than a one-line fix? Not fixing it at all.
-- This is X11 only! I am too lazy to make it work on Wayland!
+- This is X11 only! I am too lazy to make it work on Wayland! It will work on Wayland, but the hotkey will not work!
