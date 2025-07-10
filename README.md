@@ -5,12 +5,13 @@ This is very janky right now lmao, don't actually expect it to be bug-free. Prob
 Currently it has these features:
 
 - It can... launch apps. Truly revolutionary
+- Fuzzy searching
 - It can calculate basic arithmetic operations
 - It can search online
+- It can run a few system commands (like `shutdown`, `lock`, etc.)
 - For a few online services (GitHub (`gh`), NPM (`npm`), and Cargo (`cargo`)), it can even fetch the top 10 results and show it without you having to leave
 - Caching said results from those online services so it can load """blazing fast (🚀🚀🤯🔫)"""
-- It can run a few system commands (like `shutdown`, `lock`, etc.)
-- Fuzzy searching
+- Converting time between timezones, with natural language (eg. `whats 5:49pm in london`)
 
 ## Showcase
 ![rnux npm search](./assets/npm-search.png)
