@@ -2,7 +2,7 @@
 App launcher made with C++, Qt6 and X11. Inspired by [Raycast](https://raycast.com).
 This is very janky right now lmao, don't actually expect it to be bug-free. Probably won't be worked on much, but I'll see, I'll try to work on it whenever im free.
 
-Currently it has these features:
+Currently, it has these features:
 
 - It can... launch apps. Truly revolutionary
 - Fuzzy searching
