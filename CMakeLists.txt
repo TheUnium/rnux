@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 COMPONENTS Core Gui Widgets Network REQUIRED)
 find_package(X11 REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(timelib REQUIRED)
 pkg_check_modules(XCB REQUIRED xcb xcb-keysyms)
 
 set(SOURCES
@@ -20,6 +21,7 @@ set(SOURCES
         src/features/calculator.cpp
         src/features/system_commands.cpp
         src/features/search.cpp
+        src/features/time_conversion.cpp
         resources.qrc
 )
 
@@ -33,6 +35,7 @@ set(HEADERS
         src/features/calculator.h
         src/features/system_commands.h
         src/features/search.h
+        src/features/time_conversion.h
         src/third_party/exprtk.hpp
 )
 
@@ -43,6 +46,7 @@ target_link_libraries(rnux
         Qt6::Gui
         Qt6::Widgets
         Qt6::Network
+        timelib::timelib
         ${X11_LIBRARIES}
         ${XCB_LIBRARIES}
 )
