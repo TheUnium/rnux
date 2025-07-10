@@ -1,8 +1,8 @@
 # 🚀 rnux
-App launcher made with C++, Qt6 and X11. Made in <6 hours, and inspired by [Raycast](https://raycast.com).
+App launcher made with C++, Qt6 and X11. Inspired by [Raycast](https://raycast.com).
 This is very janky right now lmao, don't actually expect it to be bug-free. Probably won't be worked on much, but I'll see, I'll try to work on it whenever im free.
 
-Right now, it's not very mature, because again, **<6 hours of development**, *however* it does have a few nice features:
+Currently it has these features:
 
 - It can... launch apps. Truly revolutionary
 - It can calculate basic arithmetic operations
