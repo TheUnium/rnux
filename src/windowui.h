@@ -26,10 +26,16 @@ public:
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
 private:
+    void paintDefaultItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const;
+    void paintTimeItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const;
     static QIcon loadIcon(const QString& iconName);
 
     QFont m_titleFont;
     QFont m_subtitleFont;
+    QFont m_timeCityFont;
+    QFont m_timeTimeFont;
+    QFont m_timeTZFont;
+    QFont m_timeDiffFont;
     QColor m_accentColor;
     QColor m_backgroundColor;
     QColor m_hoverColor;
@@ -59,6 +65,7 @@ public:
     QLineEdit* getSearchEdit() const { return m_searchEdit; }
 
     static constexpr int ITEM_HEIGHT = 60;
+    static constexpr int TIME_ITEM_HEIGHT = 130;
     static constexpr int SEARCH_HEIGHT = 72;
     static constexpr int MAX_VISIBLE_ITEMS = 8;
     static constexpr int WINDOW_WIDTH = 680;

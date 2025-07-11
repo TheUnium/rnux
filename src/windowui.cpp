@@ -14,6 +14,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <random>
+#include <QRegularExpression>
 
 ModernItemDelegate::ModernItemDelegate(QObject* parent)
     : QStyledItemDelegate(parent)
@@ -26,9 +27,17 @@ ModernItemDelegate::ModernItemDelegate(QObject* parent)
 {
     m_titleFont = QFont("SF Pro Display", 15, QFont::Medium);
     m_subtitleFont = QFont("SF Pro Display", 13, QFont::Normal);
+    m_timeCityFont = QFont("SF Pro Display", 16, QFont::Bold);
+    m_timeTimeFont = QFont("SF Pro Display", 32, QFont::Light);
+    m_timeTZFont = QFont("SF Pro Display", 14, QFont::Normal);
+    m_timeDiffFont = QFont("SF Pro Display", 15, QFont::Medium);
 
     m_titleFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
     m_subtitleFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
+    m_timeCityFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
+    m_timeTimeFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
+    m_timeTZFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
+    m_timeDiffFont.setFamilies({"SF Pro Display", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", "Arial"});
 }
 
 QIcon ModernItemDelegate::loadIcon(const QString& iconName) {
@@ -91,6 +100,18 @@ void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
     painter->setRenderHint(QPainter::SmoothPixmapTransform);
+
+    QString type = index.data(Qt::UserRole + 2).toString();
+    if (type == "time") {
+        paintTimeItem(painter, option, index);
+    } else {
+        paintDefaultItem(painter, option, index);
+    }
+
+    painter->restore();
+}
+
+void ModernItemDelegate::paintDefaultItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
     QRect rect = option.rect;
     bool isSelected = option.state & QStyle::State_Selected;
 
@@ -145,8 +166,7 @@ void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
     // app name/title
     painter->setPen(isSelected ? QColor("#FFFFFF") : m_textColor);
     painter->setFont(m_titleFont);
-
-    QRect titleRect = rect.adjusted(56, 12, -60, -28);
+    QRect titleRect = rect.adjusted(56, 10, -60, -30);
     QFontMetrics titleMetrics(m_titleFont);
     QString elidedTitle = titleMetrics.elidedText(title, Qt::ElideRight, titleRect.width());
     painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedTitle);
@@ -155,8 +175,7 @@ void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
     if (!subtitle.isEmpty()) {
         painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
         painter->setFont(m_subtitleFont);
-
-        QRect subtitleRect = rect.adjusted(56, 32, -60, -8);
+        QRect subtitleRect = rect.adjusted(56, 30, -60, -6);
         QFontMetrics subtitleMetrics(m_subtitleFont);
         QString elidedSubtitle = subtitleMetrics.elidedText(subtitle, Qt::ElideRight, subtitleRect.width());
         painter->drawText(subtitleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedSubtitle);
@@ -169,14 +188,152 @@ void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
         QRect shortcutRect(rect.right() - 50, rect.center().y() - 8, 40, 16);
         painter->drawText(shortcutRect, Qt::AlignCenter, "⏎");
     }
+}
 
-    painter->restore();
+void ModernItemDelegate::paintTimeItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
+    QRect rect = option.rect;
+    bool isSelected = option.state & QStyle::State_Selected;
+
+    if (bool isHovered = option.state & QStyle::State_MouseOver; isSelected || isHovered) {
+        QPainterPath path;
+        path.addRoundedRect(rect.adjusted(8, 4, -8, -4), 8, 8);
+
+        if (isSelected) {
+            QLinearGradient gradient(rect.topLeft(), rect.bottomLeft());
+            gradient.setColorAt(0, m_selectedColor.lighter(120));
+            gradient.setColorAt(0.5, m_selectedColor);
+            gradient.setColorAt(1, m_selectedColor.darker(110));
+            painter->fillPath(path, gradient);
+            painter->setPen(QPen(QColor(255, 255, 255, 60), 1));
+            painter->drawPath(path);
+        } else if (isHovered) {
+            auto hoverBg = QColor(255, 255, 255, 15);
+            painter->fillPath(path, hoverBg);
+            painter->setPen(QPen(QColor(255, 255, 255, 30), 1));
+            painter->drawPath(path);
+        }
+    }
+
+    QString title = index.data(Qt::DisplayRole).toString();
+    painter->setPen(isSelected ? Qt::white : m_textColor);
+
+    QRegularExpression conversionRegex(R"(^(.*?) in (.+?) is (.*?) in (.+?)$)");
+    QRegularExpression singleTimeRegex(R"(^The current time in (.+?) is (.+?) \((.+?)\)$)");
+    // Fixed regex pattern to match your actual format
+    QRegularExpression diffRegex(R"(^(.+?) \((.+?)\) is (.+?) (ahead of|behind) (.+?) \((.+?)\)\.$)");
+
+    QRegularExpressionMatch conversionMatch = conversionRegex.match(title);
+    QRegularExpressionMatch singleTimeMatch = singleTimeRegex.match(title);
+    QRegularExpressionMatch diffMatch = diffRegex.match(title);
+
+    auto parseDateTime = [](const QString& full, QString& date, QString& time, QString& tz) {
+        QString temp = full.trimmed();
+        QRegularExpression re(R"((?:(.*?), )?((?:\d{1,2}:\d{2}) (?:AM|PM))(?: \((.*)\))?)");
+        QRegularExpressionMatch match = re.match(temp);
+        if (match.hasMatch()) {
+            date = match.captured(1);
+            time = match.captured(2);
+            tz = match.captured(3);
+        } else {
+            time = temp;
+        }
+    };
+
+    if (conversionMatch.hasMatch()) {
+        QString fromFull = conversionMatch.captured(1);
+        QString fromLoc = conversionMatch.captured(2).toUpper();
+        QString toFull = conversionMatch.captured(3);
+        QString toLoc = conversionMatch.captured(4).toUpper();
+        QString fromDate, fromTime, fromTZ, toDate, toTime, toTZ;
+        parseDateTime(fromFull, fromDate, fromTime, fromTZ);
+        parseDateTime(toFull, toDate, toTime, toTZ);
+        QRect leftRect = rect.adjusted(30, 15, -rect.width() / 2, -15);
+        QRect rightRect = rect.adjusted(rect.width() / 2, 15, -30, -15);
+
+        painter->setFont(m_timeCityFont);
+        painter->drawText(QRect(leftRect.x(), leftRect.y(), leftRect.width(), 40), Qt::AlignTop | Qt::AlignLeft, fromLoc);
+
+        painter->setFont(m_timeTimeFont);
+        painter->drawText(QRect(leftRect.x(), leftRect.y() + 30, leftRect.width(), 60), Qt::AlignTop | Qt::AlignLeft, fromTime);
+        painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
+        painter->setFont(m_timeTZFont);
+        QString fromSub = fromTZ + (!fromDate.isEmpty() && fromDate != toDate ? " (" + fromDate + ")" : "");
+        painter->drawText(QRect(leftRect.x(), leftRect.y() + 85, leftRect.width(), 40), Qt::AlignTop | Qt::AlignLeft, fromSub);
+
+        painter->setPen(isSelected ? Qt::white : m_textColor);
+        painter->setFont(m_timeCityFont);
+        painter->drawText(QRect(rightRect.x(), rightRect.y(), rightRect.width(), 40), Qt::AlignTop | Qt::AlignLeft, toLoc);
+
+        painter->setFont(m_timeTimeFont);
+        painter->drawText(QRect(rightRect.x(), rightRect.y() + 30, rightRect.width(), 60), Qt::AlignTop | Qt::AlignLeft, toTime);
+
+        painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
+        painter->setFont(m_timeTZFont);
+        QString toSub = toTZ + (!toDate.isEmpty() ? " (" + toDate + ")" : "");
+        painter->drawText(QRect(rightRect.x(), rightRect.y() + 85, rightRect.width(), 40), Qt::AlignTop | Qt::AlignLeft, toSub);
+    } else if (singleTimeMatch.hasMatch()) {
+        QString loc = singleTimeMatch.captured(1).toUpper();
+        QString time = singleTimeMatch.captured(2);
+        QString tz = singleTimeMatch.captured(3);
+        QRect textRect = rect.adjusted(30, 15, -30, -15);
+
+        painter->setFont(m_timeCityFont);
+        painter->drawText(QRect(textRect.x(), textRect.y(), textRect.width(), 40), Qt::AlignTop | Qt::AlignLeft, loc);
+
+        painter->setFont(m_timeTimeFont);
+        painter->drawText(QRect(textRect.x(), textRect.y() + 30, textRect.width(), 60), Qt::AlignTop | Qt::AlignLeft, time);
+
+        painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
+        painter->setFont(m_timeTZFont);
+        painter->drawText(QRect(textRect.x(), textRect.y() + 85, textRect.width(), 40), Qt::AlignTop | Qt::AlignLeft, tz);
+    } else if (diffMatch.hasMatch()) {
+        QString city1 = diffMatch.captured(1);
+        QString tz1 = diffMatch.captured(2);
+        QString timeDiff = diffMatch.captured(3);
+        QString relation = diffMatch.captured(4);
+        QString city2 = diffMatch.captured(5);
+        QString tz2 = diffMatch.captured(6);
+
+        QString diffText = QString("%1 %2").arg(timeDiff, relation);
+        QRect leftRect = rect.adjusted(30, 20, -rect.width() / 2 - 10, -20);
+        QRect rightRect = rect.adjusted(rect.width() / 2 + 10, 20, -30, -20);
+        QRect centerRect = rect.adjusted(0, 60, 0, -20);
+
+        // 1st city + tz
+        painter->setPen(isSelected ? Qt::white : m_textColor);
+        painter->setFont(m_timeCityFont);
+        painter->drawText(leftRect, Qt::AlignTop | Qt::AlignLeft, city1.toUpper());
+
+        painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
+        painter->setFont(m_timeTZFont);
+        painter->drawText(leftRect.adjusted(0, 25, 0, 0), Qt::AlignTop | Qt::AlignLeft, tz1);
+
+        // 2nd city + tz
+        painter->setPen(isSelected ? Qt::white : m_textColor);
+        painter->setFont(m_timeCityFont);
+        painter->drawText(rightRect, Qt::AlignTop | Qt::AlignRight, city2.toUpper());
+
+        painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
+        painter->setFont(m_timeTZFont);
+        painter->drawText(rightRect.adjusted(0, 25, 0, 0), Qt::AlignTop | Qt::AlignRight, tz2);
+
+        // time diff
+        painter->setPen(isSelected ? Qt::white : m_textColor);
+        painter->setFont(m_timeDiffFont);
+        painter->drawText(centerRect, Qt::AlignCenter, diffText);
+
+    } else {
+        painter->setFont(m_titleFont);
+        painter->drawText(rect.adjusted(20, 0, -20, 0), Qt::AlignCenter, title);
+    }
 }
 
 QSize ModernItemDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     Q_UNUSED(option)
-    Q_UNUSED(index)
-    return QSize(0, WindowUI::ITEM_HEIGHT);
+    if (const QString type = index.data(Qt::UserRole + 2).toString(); type == "time") {
+        return QSize(0, WindowUI::TIME_ITEM_HEIGHT + 10);
+    }
+    return QSize(0, WindowUI::ITEM_HEIGHT + 2);
 }
 
 WindowUI::WindowUI(QWidget* parent)
@@ -348,7 +505,7 @@ void WindowUI::setupStyles() const {
         "    font-size: 15px;"
         "    font-weight: 400;"
         "    background-color: transparent;"
-        "    padding: 48px 24px;"
+        "    padding: 40px 24px;"
         "}"
     );
 }
@@ -362,6 +519,7 @@ void WindowUI::setResults(const QList<FeatureItem>& results) {
         const auto modelItem = new QStandardItem(item.title);
         modelItem->setData(item.subtitle, Qt::UserRole);
         modelItem->setData(item.icon, Qt::UserRole + 1);
+        modelItem->setData(item.type, Qt::UserRole + 2);
         modelItem->setFlags(modelItem->flags() & ~Qt::ItemIsEditable);
         m_model->appendRow(modelItem);
     }
@@ -416,9 +574,14 @@ void WindowUI::updateHeight() {
     int newHeight = SEARCH_HEIGHT + 1;
 
     if (itemCount > 0) {
-        newHeight += itemCount * ITEM_HEIGHT + 16;
+        int resultsHeight = 0;
+        for (int i = 0; i < itemCount; ++i) {
+            QModelIndex index = m_model->index(i, 0);
+            resultsHeight += m_delegate->sizeHint(QStyleOptionViewItem(), index).height();
+        }
+        newHeight += resultsHeight + 16;
     } else if (!m_currentQuery.isEmpty()) {
-        newHeight += 96;
+        newHeight += 120;
     }
 
     if (newHeight != m_currentHeight) {

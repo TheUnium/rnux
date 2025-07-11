@@ -26,6 +26,7 @@ All the code is in `src/`
 - CMake
 - Qt6
 - X11
+- [timelib](https://github.com/TheUnium/timelib)
 
 ## Extra stuff
 I was bored and watching Youtube and I saw a video in my recommended, which was a showcase of [Raycasts'](https://www.raycast.com/) windows port. This *unfortunately* gave me inspiration to make something similar.
