@@ -171,12 +171,21 @@ void ModernItemDelegate::paintDefaultItem(QPainter* painter, const QStyleOptionV
     QString elidedTitle = titleMetrics.elidedText(title, Qt::ElideRight, titleRect.width());
     painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedTitle);
 
-    if (isSelected) {
-        painter->setPen(QColor("#FFFFFF"));
-        painter->setFont(QFont("SF Pro Display", 11, QFont::Medium));
-
-        QRect shortcutRect(rect.right() - 50, rect.center().y() - 8, 40, 16);
-        painter->drawText(shortcutRect, Qt::AlignCenter, "⏎");
+    // type/action indicator text thing
+    QString type = index.data(Qt::UserRole + 2).toString();
+    if (!type.isEmpty()) {
+        QRect typeRect = rect.adjusted(0, 0, -20, 0);
+        QString textToDraw;
+        if (isSelected) {
+            textToDraw = "⏎";
+            painter->setPen(QColor(255, 255, 255, 220));
+            painter->setFont(QFont("SF Pro Display", 14, QFont::Normal));
+        } else {
+            textToDraw = type;
+            painter->setPen(m_subtitleColor);
+            painter->setFont(QFont("SF Pro Display", 11, QFont::Medium));
+        }
+        painter->drawText(typeRect, Qt::AlignRight | Qt::AlignVCenter, textToDraw);
     }
 }
 

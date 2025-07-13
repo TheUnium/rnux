@@ -17,6 +17,7 @@ Search::Search(QObject* parent)
 {
     setupProviders();
     initializeCache();
+    downloadProviderIcons();
 
     m_searchTimer->setSingleShot(true);
     m_searchTimer->setInterval(200);
@@ -33,85 +34,134 @@ Search::~Search() {
 void Search::setupProviders() {
     m_providers = {
         // general search engines
-        SearchProvider("Google", "g", "web-browser",
+        SearchProvider("Google", "g", "https://www.google.com/favicon.ico", // y
                       "https://www.google.com/search?q=%1",
                       "Search Google"),
 
-        SearchProvider("DuckDuckGo", "ddg", "web-browser",
+        SearchProvider("DuckDuckGo", "ddg", "https://duckduckgo.com/favicon.ico", // y
                       "https://duckduckgo.com/?q=%1",
                       "Search DuckDuckGo"),
 
-        SearchProvider("Bing", "bing", "web-browser",
+        SearchProvider("Bing", "bing", "https://www.bing.com/favicon.ico", // y
                       "https://www.bing.com/search?q=%1",
                       "Search Bing"),
 
-        SearchProvider("Yandex", "yandex", "web-browser",
+        SearchProvider("Yandex", "yandex", "https://yandex.com/favicon.ico", // y
                       "https://yandex.com/search/?text=%1",
                       "Search Yandex"),
 
         // thingies
-        SearchProvider("NPM", "npm", "applications-development",
+        SearchProvider("NPM", "npm", "https://theunium.github.io/extra/npm.ico", // n y
                       "https://www.npmjs.com/search?q=%1",
                       "Search NPM packages",
                       "https://registry.npmjs.org/-/v1/search?text=%1&size=10", true, "npm"),
 
-        SearchProvider("Cargo", "cargo", "applications-development",
+        SearchProvider("Cargo", "cargo", "https://crates.io/favicon.ico", // y
                       "https://crates.io/search?q=%1",
                       "Search Rust crates",
                       "https://crates.io/api/v1/crates?q=%1&per_page=10", true, "cargo"),
 
-        SearchProvider("GitHub", "gh", "applications-development",
+        SearchProvider("GitHub", "gh", "https://github.com/favicon.ico", // y
                       "https://github.com/search?q=%1",
                       "Search GitHub repositories",
                       "https://api.github.com/search/repositories?q=%1&sort=stars&order=desc&per_page=10", true, "github"),
 
-        SearchProvider("PyPI", "pypi", "applications-development",
+        SearchProvider("PyPI", "pypi", "https://pypi.org/favicon.ico", // y
                       "https://pypi.org/search/?q=%1",
                       "Search Python packages"),
 
-        SearchProvider("Docker Hub", "docker", "applications-development",
+        SearchProvider("Docker Hub", "docker", "https://hub.docker.com/favicon.ico", // y
                       "https://hub.docker.com/search?q=%1",
                       "Search Docker images"),
 
         // docs
-        SearchProvider("MDN", "mdn", "text-html",
+        SearchProvider("MDN", "mdn", "https://developer.mozilla.org/favicon.ico", // y
                       "https://developer.mozilla.org/en-US/search?q=%1",
                       "Search MDN Web Docs"),
 
-        SearchProvider("Stack Overflow", "so", "applications-development",
+        SearchProvider("Stack Overflow", "so", "https://stackoverflow.com/favicon.ico", // y
                       "https://stackoverflow.com/search?q=%1",
                       "Search Stack Overflow"),
 
-        SearchProvider("Reddit", "reddit", "internet-web-browser",
+        SearchProvider("Reddit", "reddit", "https://www.reddit.com/favicon.ico", // y
                       "https://www.reddit.com/search/?q=%1",
                       "Search Reddit"),
 
-        SearchProvider("YouTube", "yt", "applications-multimedia",
+        SearchProvider("YouTube", "yt", "https://www.youtube.com/favicon.ico", // y
                       "https://www.youtube.com/results?search_query=%1",
                       "Search YouTube"),
 
-        SearchProvider("Wikipedia", "wiki", "accessories-dictionary",
+        SearchProvider("Wikipedia", "wiki", "https://en.wikipedia.org/favicon.ico", // y
                       "https://en.wikipedia.org/wiki/Special:Search/%1",
                       "Search Wikipedia"),
 
-        // pkg managhers
-        SearchProvider("Arch AUR", "aur", "applications-system",
+        SearchProvider("Arch AUR", "aur", "https://aur.archlinux.org/favicon.ico", // y
                       "https://aur.archlinux.org/packages/?K=%1",
                       "Search Arch User Repository"),
 
-        SearchProvider("Debian Packages", "deb", "applications-system",
+        SearchProvider("Debian Packages", "deb", "https://packages.debian.org/favicon.ico", // y
                       "https://packages.debian.org/search?keywords=%1",
                       "Search Debian packages"),
 
-        SearchProvider("Homebrew", "brew", "applications-system",
+        SearchProvider("Homebrew", "brew", "https://brew.sh/assets/img/favicon.ico", // n y
                       "https://formulae.brew.sh/formula/%1",
                       "Search Homebrew packages"),
 
         // social media
-        SearchProvider("Twitter", "tw", "internet-web-browser",
+        SearchProvider("Twitter", "tw", "https://twitter.com/favicon.ico", // y
                       "https://twitter.com/search?q=%1",
                       "Search Twitter"),
     };
+}
+
+void Search::downloadProviderIcons() {
+    const QString iconDir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.rnux/icons";
+    if (!QDir().exists(iconDir)) {
+        QDir().mkpath(iconDir);
+    }
+
+    for (const auto& provider : m_providers) {
+        const QString iconPath = iconDir + "/" + provider.shortcut + ".ico";
+        m_iconPaths[provider.shortcut] = iconPath;
+
+        if (QFile::exists(iconPath)) {
+            QPixmap icon(iconPath);
+            if (!icon.isNull()) {
+                m_iconCache[provider.shortcut] = icon;
+                continue;
+            }
+        }
+
+        QNetworkRequest request(QUrl(provider.iconUrl));
+        request.setRawHeader("User-Agent", "rnux-app-launcher/1.0");
+        QNetworkReply* reply = m_networkManager->get(request);
+        reply->setProperty("shortcut", provider.shortcut);
+        connect(reply, &QNetworkReply::finished, this, &Search::onIconDownloaded);
+    }
+}
+
+void Search::onIconDownloaded() {
+    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
+    if (!reply) return;
+
+    const QString shortcut = reply->property("shortcut").toString();
+
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray data = reply->readAll();
+        QPixmap icon;
+        if (icon.loadFromData(data)) {
+            m_iconCache[shortcut] = icon;
+
+            if (m_iconPaths.contains(shortcut)) {
+                QFile file(m_iconPaths[shortcut]);
+                if (file.open(QIODevice::WriteOnly)) {
+                    file.write(data);
+                }
+            }
+        }
+    }
+
+    reply->deleteLater();
 }
 
 QList<FeatureItem> Search::search(const QString& query) {
@@ -121,11 +171,13 @@ QList<FeatureItem> Search::search(const QString& query) {
     for (const auto& provider : m_providers) {
         if (QString pattern = provider.shortcut + " "; query.startsWith(pattern, Qt::CaseInsensitive)) {
             if (QString searchQuery = extractSearchQuery(query, provider.shortcut); searchQuery.isEmpty()) {
-                results.append({ provider.name, provider.description, provider.icon,
+                const QString iconPath = m_iconPaths.value(provider.shortcut, "system-search");
+                results.append({ provider.name, "", iconPath,
                                  provider.searchUrl.arg(""), "search" });
             } else {
+                const QString iconPath = m_iconPaths.value(provider.shortcut, "system-search");
                 results.append({ QString("Search %1: %2").arg(provider.name, searchQuery),
-                                 provider.description, provider.icon,
+                                 "", iconPath,
                                  provider.searchUrl.arg(QString(QUrl::toPercentEncoding(searchQuery))),
                                  "search" });
 
@@ -238,16 +290,13 @@ QList<FeatureItem> Search::parseNpmResults(const QJsonDocument& doc, const QStri
 
         auto pkg = itemObj["package"].toObject();
         QString name = pkg["name"].toString();
-        QString descr = pkg["description"].toString();
         QString version = pkg["version"].toString();
 
-        if (descr.length() > 80) descr = descr.left(77) + "...";
+        QString title = QString("%1 v%2 • %3 downloads").arg(name, version, QString::number(downloads));
 
         results.append(createFeatureItem(
-            QString("%1 v%2").arg(name, version),
-            descr,
-            QString("https://www.npmjs.com/package/%1").arg(name),
-            QString("%1 downloads").arg(downloads)
+            title,
+            QString("https://www.npmjs.com/package/%1").arg(name)
         ));
     }
     return results;
@@ -261,16 +310,14 @@ QList<FeatureItem> Search::parseCargoResults(const QJsonDocument& doc, const QSt
     for (auto item : crates) {
         auto crate = item.toObject();
         QString name = crate["name"].toString();
-        QString descr = crate["description"].toString();
         QString version = crate["max_version"].toString();
         const int downloads = crate["downloads"].toInt();
-        if (descr.length() > 80) descr = descr.left(77) + "...";
+
+        QString title = QString("%1 v%2 • %3 downloads").arg(name, version, QString::number(downloads));
 
         results.append(createFeatureItem(
-            QString("%1 v%2").arg(name, version),
-            descr,
-            QString("https://crates.io/crates/%1").arg(name),
-            QString("%1 downloads").arg(downloads)
+            title,
+            QString("https://crates.io/crates/%1").arg(name)
         ));
     }
     return results;
@@ -284,17 +331,14 @@ QList<FeatureItem> Search::parseGitHubResults(const QJsonDocument& doc, const QS
     for (auto item : repos) {
         auto repo = item.toObject();
         QString name = repo["full_name"].toString();
-        QString descr = repo["description"].toString();
         QString url = repo["html_url"].toString();
         const int stars = repo["stargazers_count"].toInt();
 
-        if (descr.length() > 80) descr = descr.left(77) + "...";
+        QString title = QString("%1 ⭐ %2").arg(name, QString::number(stars));
 
         results.append(createFeatureItem(
-            name,
-            descr,
-            url,
-            QString("⭐ %1").arg(stars)
+            title,
+            url
         ));
     }
     return results;
@@ -332,7 +376,7 @@ void Search::saveCache() {
         for (const auto& result : entry.results) {
             QJsonArray item;
             item.append(result.title);
-            item.append(result.subtitle);
+            item.append("");
             item.append(result.data);
             items.append(item);
         }
@@ -374,7 +418,6 @@ void Search::loadCache() {
                 if (item.size() >= 3) {
                     entry.results.append(createFeatureItem(
                         item[0].toString(),
-                        item[1].toString(),
                         item[2].toString()
                     ));
                 }
@@ -435,12 +478,6 @@ QString Search::getCacheFilePath() {
     return cacheDir + "/search.json";
 }
 
-FeatureItem Search::createFeatureItem(const QString& name, const QString& description,
-                                    const QString& url, const QString& metric) {
-    QString subtitle = description;
-    if (!metric.isEmpty()) {
-        subtitle = QString("%1 • %2").arg(metric, description);
-    }
-
-    return FeatureItem{ name, subtitle, "applications-development", url, "search" };
+FeatureItem Search::createFeatureItem(const QString& name, const QString& url) {
+    return FeatureItem{ name, "", "applications-development", url, "search" };
 }

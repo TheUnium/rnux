@@ -11,12 +11,13 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QHash>
+#include <QPixmap>
 #include <utility>
 
 struct SearchProvider {
     QString name;
     QString shortcut;
-    QString icon;
+    QString iconUrl;
     QString searchUrl;
     QString apiUrl;
     QString description;
@@ -27,7 +28,7 @@ struct SearchProvider {
                    QString  url, QString  desc,
                    QString  api = QString(), const bool hasApiFlag = false,
                    QString  cType = QString())
-        : name(std::move(n)), shortcut(std::move(s)), icon(std::move(i)),
+        : name(std::move(n)), shortcut(std::move(s)), iconUrl(std::move(i)),
           searchUrl(std::move(url)), apiUrl(std::move(api)),
           description(std::move(desc)), cacheType(std::move(cType)), hasApi(hasApiFlag)
     {}
@@ -62,17 +63,18 @@ signals:
 private slots:
     void onApiResponse();
     void onSearchTimeout();
+    void onIconDownloaded();
 
 private:
     void setupProviders();
     void performApiSearch(const SearchProvider& provider, const QString& query);
+    void downloadProviderIcons();
     static QString extractSearchQuery(const QString& fullQuery, const QString& shortcut);
-    QList<FeatureItem> parseNpmResults(const QJsonDocument& doc, const QString& query);
-    QList<FeatureItem> parseCargoResults(const QJsonDocument& doc, const QString& query);
-    QList<FeatureItem> parseGitHubResults(const QJsonDocument& doc, const QString& query);
+    static QList<FeatureItem> parseNpmResults(const QJsonDocument& doc, const QString& query);
+    static QList<FeatureItem> parseCargoResults(const QJsonDocument& doc, const QString& query);
+    static QList<FeatureItem> parseGitHubResults(const QJsonDocument& doc, const QString& query);
 
-    static FeatureItem createFeatureItem(const QString& name, const QString& description,
-                                         const QString& url, const QString& metric = QString());
+    static FeatureItem createFeatureItem(const QString& name, const QString& url);
 
     QNetworkAccessManager* m_networkManager;
     QTimer* m_searchTimer;
@@ -96,4 +98,7 @@ private:
 
     QString m_activeSearchType;
     QString m_activeSearchQuery;
+
+    QHash<QString, QPixmap> m_iconCache;
+    QHash<QString, QString> m_iconPaths;
 };

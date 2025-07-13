@@ -66,7 +66,10 @@ void MainWindow::updateResults() {
     for (auto* feature : m_features) {
         if (feature->isEnabled()) {
             auto results = feature->search(m_currentQuery);
-            for (const auto& result : results) {
+            for (auto& result : results) {
+                if (result.type != "time") {
+                    result.type = feature->getName();
+                }
                 m_currentResults.append(ResultWithFeature(result, feature));
             }
         }
