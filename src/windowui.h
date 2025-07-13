@@ -59,14 +59,14 @@ public:
     void selectNextItem() const;
     void selectPreviousItem() const;
     void activateCurrentItem();
-    int getCurrentIndex() const;
-    bool hasResults() const;
+    [[nodiscard]] int getCurrentIndex() const;
+    [[nodiscard]] bool hasResults() const;
 
-    QLineEdit* getSearchEdit() const { return m_searchEdit; }
+    [[nodiscard]] QLineEdit* getSearchEdit() const { return m_searchEdit; }
 
-    static constexpr int ITEM_HEIGHT = 60;
+    static constexpr int ITEM_HEIGHT = 40;
     static constexpr int TIME_ITEM_HEIGHT = 130;
-    static constexpr int SEARCH_HEIGHT = 72;
+    static constexpr int SEARCH_HEIGHT = 50;
     static constexpr int MAX_VISIBLE_ITEMS = 8;
     static constexpr int WINDOW_WIDTH = 680;
     static constexpr int BORDER_RADIUS = 16;
@@ -100,7 +100,7 @@ private:
     QFrame* m_searchFrame;
     QHBoxLayout* m_searchLayout;
     QLineEdit* m_searchEdit;
-    QLabel* m_searchIcon;
+    QLabel* m_resultsLabel;
     QListView* m_listView;
     QLabel* m_emptyLabel;
     QStandardItemModel* m_model;

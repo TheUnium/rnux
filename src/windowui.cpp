@@ -25,7 +25,7 @@ ModernItemDelegate::ModernItemDelegate(QObject* parent)
     , m_textColor(QColor("#FFFFFF"))
     , m_subtitleColor(QColor("#9CA3AF"))
 {
-    m_titleFont = QFont("SF Pro Display", 15, QFont::Medium);
+    m_titleFont = QFont("SF Pro Display", 14, QFont::Normal);
     m_subtitleFont = QFont("SF Pro Display", 13, QFont::Normal);
     m_timeCityFont = QFont("SF Pro Display", 16, QFont::Bold);
     m_timeTimeFont = QFont("SF Pro Display", 32, QFont::Light);
@@ -142,44 +142,34 @@ void ModernItemDelegate::paintDefaultItem(QPainter* painter, const QStyleOptionV
     QString iconName = index.data(Qt::UserRole + 1).toString();
 
     // icon
-    QRect iconRect(rect.left() + 20, rect.center().y() - 12, 24, 24);
+    QRect iconRect(rect.left() + 20, rect.center().y() - 8, 16, 16);
     if (!iconName.isEmpty()) {
         if (QIcon icon = loadIcon(iconName); !icon.isNull()) {
-            if (QPixmap pixmap = icon.pixmap(24, 24); !pixmap.isNull()) {
+            if (QPixmap pixmap = icon.pixmap(16, 16); !pixmap.isNull()) {
                 painter->drawPixmap(iconRect, pixmap);
             } else {
                 painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
                 painter->setBrush(Qt::NoBrush);
-                painter->drawRoundedRect(iconRect, 6, 6);
+                painter->drawRoundedRect(iconRect, 4, 4);
             }
         } else {
             painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
             painter->setBrush(Qt::NoBrush);
-            painter->drawRoundedRect(iconRect, 6, 6);
+            painter->drawRoundedRect(iconRect, 4, 4);
         }
     } else {
         painter->setPen(QPen(isSelected ? QColor("#FFFFFF") : QColor("#6B7280"), 2));
         painter->setBrush(Qt::NoBrush);
-        painter->drawRoundedRect(iconRect, 6, 6);
+        painter->drawRoundedRect(iconRect, 4, 4);
     }
 
     // app name/title
     painter->setPen(isSelected ? QColor("#FFFFFF") : m_textColor);
     painter->setFont(m_titleFont);
-    QRect titleRect = rect.adjusted(56, 10, -60, -30);
+    QRect titleRect = rect.adjusted(48, 0, -50, 0);
     QFontMetrics titleMetrics(m_titleFont);
     QString elidedTitle = titleMetrics.elidedText(title, Qt::ElideRight, titleRect.width());
     painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedTitle);
-
-    // sub app desc/subtitle
-    if (!subtitle.isEmpty()) {
-        painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
-        painter->setFont(m_subtitleFont);
-        QRect subtitleRect = rect.adjusted(56, 30, -60, -6);
-        QFontMetrics subtitleMetrics(m_subtitleFont);
-        QString elidedSubtitle = subtitleMetrics.elidedText(subtitle, Qt::ElideRight, subtitleRect.width());
-        painter->drawText(subtitleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedSubtitle);
-    }
 
     if (isSelected) {
         painter->setPen(QColor("#FFFFFF"));
@@ -219,7 +209,6 @@ void ModernItemDelegate::paintTimeItem(QPainter* painter, const QStyleOptionView
 
     QRegularExpression conversionRegex(R"(^(.*?) in (.+?) is (.*?) in (.+?)$)");
     QRegularExpression singleTimeRegex(R"(^The current time in (.+?) is (.+?) \((.+?)\)$)");
-    // Fixed regex pattern to match your actual format
     QRegularExpression diffRegex(R"(^(.+?) \((.+?)\) is (.+?) (ahead of|behind) (.+?) \((.+?)\)\.$)");
 
     QRegularExpressionMatch conversionMatch = conversionRegex.match(title);
@@ -342,7 +331,7 @@ WindowUI::WindowUI(QWidget* parent)
     , m_searchFrame(nullptr)
     , m_searchLayout(nullptr)
     , m_searchEdit(nullptr)
-    , m_searchIcon(nullptr)
+    , m_resultsLabel(nullptr)
     , m_listView(nullptr)
     , m_emptyLabel(nullptr)
     , m_model(nullptr)
@@ -379,18 +368,17 @@ void WindowUI::setupUI() {
     m_searchFrame = new QFrame(this);
     m_searchFrame->setFixedHeight(SEARCH_HEIGHT);
     m_searchLayout = new QHBoxLayout(m_searchFrame);
-    m_searchLayout->setContentsMargins(24, 0, 24, 0);
+    m_searchLayout->setContentsMargins(20, 0, 20, 0);
     m_searchLayout->setSpacing(16);
-    m_searchIcon = new QLabel(this);
-    m_searchIcon->setText("⌕");
-    m_searchIcon->setFixedSize(24, 24);
-    m_searchIcon->setAlignment(Qt::AlignCenter);
     // search input
     m_searchEdit = new QLineEdit(this);
     m_searchEdit->setPlaceholderText("Search applications, calculate, run commands...");
     m_searchEdit->setAttribute(Qt::WA_MacShowFocusRect, false);
-    m_searchLayout->addWidget(m_searchIcon);
     m_searchLayout->addWidget(m_searchEdit);
+
+    m_resultsLabel = new QLabel(this);
+    m_resultsLabel->setText("Results");
+    m_resultsLabel->setVisible(false);
 
     m_separator = new QFrame(this);
     m_separator->setFrameShape(QFrame::HLine);
@@ -417,6 +405,7 @@ void WindowUI::setupUI() {
 
     m_mainLayout->addWidget(m_searchFrame);
     m_mainLayout->addWidget(m_separator);
+    m_mainLayout->addWidget(m_resultsLabel);
     m_mainLayout->addWidget(m_listView);
     m_mainLayout->addWidget(m_emptyLabel);
 
@@ -471,20 +460,23 @@ void WindowUI::setupStyles() const {
         "}"
     );
 
-    m_searchIcon->setStyleSheet(
+    m_resultsLabel->setStyleSheet(
         "QLabel {"
         "    color: #9CA3AF;"
-        "    font-size: 18px;"
-        "    font-weight: 300;"
+        "    font-family: 'SF Pro Display', 'Segoe UI Variable', 'Segoe UI', 'Helvetica Neue', Arial;"
+        "    font-size: 13px;"
+        "    font-weight: 500;"
         "    background-color: transparent;"
+        "    padding: 2px 2px 2px 16px;"
+        "    margin-top: 8px;"
         "}"
     );
 
     m_separator->setStyleSheet(
         "QFrame {"
         "    border: none;"
-        "    background-color: rgba(255, 255, 255, 0.08);"
-        "    margin: 0px 16px;"
+        "    background-color: rgba(255, 255, 255, 0.09);"
+        "    margin: 0px 8px;"
         "}"
     );
 
@@ -494,7 +486,7 @@ void WindowUI::setupStyles() const {
         "    background-color: transparent;"
         "    selection-background-color: transparent;"
         "    outline: none;"
-        "    padding: 8px 0px;"
+        "    padding: 2px 0px;"
         "}"
     );
 
@@ -571,16 +563,19 @@ bool WindowUI::hasResults() const {
 
 void WindowUI::updateHeight() {
     const int itemCount = std::min(m_model->rowCount(), MAX_VISIBLE_ITEMS);
-    int newHeight = SEARCH_HEIGHT + 1;
+    int newHeight = SEARCH_HEIGHT;
 
     if (itemCount > 0) {
+        newHeight += 1;
+        newHeight += 32;
         int resultsHeight = 0;
         for (int i = 0; i < itemCount; ++i) {
             QModelIndex index = m_model->index(i, 0);
             resultsHeight += m_delegate->sizeHint(QStyleOptionViewItem(), index).height();
         }
-        newHeight += resultsHeight + 16;
+        newHeight += resultsHeight + 8;
     } else if (!m_currentQuery.isEmpty()) {
+        newHeight += 1;
         newHeight += 120;
     }
 
@@ -599,10 +594,13 @@ void WindowUI::animateHeight(const int newHeight) {
 }
 
 void WindowUI::updateEmptyState() const {
-    const bool showEmpty = !m_currentQuery.isEmpty() && m_model->rowCount() == 0;
+    const bool hasResults = m_model->rowCount() > 0;
+    const bool showEmpty = !m_currentQuery.isEmpty() && !hasResults;
+
+    m_listView->setVisible(hasResults);
+    m_resultsLabel->setVisible(hasResults);
     m_emptyLabel->setVisible(showEmpty);
-    m_listView->setVisible(!showEmpty);
-    m_separator->setVisible(!showEmpty || m_model->rowCount() > 0);
+    m_separator->setVisible(hasResults || showEmpty);
 }
 
 void WindowUI::showEvent(QShowEvent* event) {
