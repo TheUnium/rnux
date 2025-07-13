@@ -13,8 +13,22 @@ Currently, it has these features:
 - Caching said results from those online services so it can load """blazing fast (🚀🚀🤯🔫)"""
 - Converting time between timezones, with natural language (eg. `whats 5:49pm in london`)
 
+## How to install
+It's very simple! Just run either of these commands:
+#### Using cURL
+```shell
+bash <(curl -fsSL https://raw.githubusercontent.com/TheUnium/rnux/refs/heads/main/assets/install.sh)
+```
+Then, simply run `rnux` in your terminal.
+
+#### Using Wget
+```shell
+bash <(wget -qO- https://raw.githubusercontent.com/TheUnium/rnux/refs/heads/main/assets/install.sh)
+```
+Then, simply run `rnux` in your terminal.
+
 ## Showcase
-![rnux npm search](./assets/npm-search.png)
+![rnux showcase image](./assets/showcase.png)
 
 ## Structure
 All the code is in `src/`
