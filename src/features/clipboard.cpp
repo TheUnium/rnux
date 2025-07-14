@@ -314,8 +314,8 @@ void Clipboard::saveHistory() {
     for (const auto&[data, preview, type, timestamp, filePath] : m_history) {
         QJsonObject itemObject;
         itemObject["t"] = type;
-        itemObject["d"] = QString::fromUtf8(encrypt(data));
-        itemObject["p"] = QString::fromUtf8(encrypt(preview));
+        itemObject["d"] = QString::fromLatin1(encrypt(data).toBase64());
+        itemObject["p"] = QString::fromLatin1(encrypt(preview).toBase64());
         itemObject["ts"] = timestamp.toString(Qt::ISODate);
         if (!filePath.isEmpty()) {
             itemObject["f"] = filePath;
@@ -342,8 +342,8 @@ void Clipboard::loadHistory() {
             QJsonObject itemObject = itemValue.toObject();
             ClipboardItem item;
             item.type = itemObject["t"].toString();
-            item.data = decrypt(itemObject["d"].toString().toUtf8());
-            item.preview = decrypt(itemObject["p"].toString().toUtf8());
+            item.data = decrypt(QByteArray::fromBase64(itemObject["d"].toString().toLatin1()));
+            item.preview = decrypt(QByteArray::fromBase64(itemObject["p"].toString().toLatin1()));
             item.timestamp = QDateTime::fromString(itemObject["ts"].toString(), Qt::ISODate);
             item.filePath = itemObject["f"].toString();
             m_history.append(item);
