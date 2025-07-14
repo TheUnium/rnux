@@ -101,9 +101,14 @@ void ModernItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
     painter->setRenderHint(QPainter::Antialiasing);
     painter->setRenderHint(QPainter::SmoothPixmapTransform);
 
-    QString type = index.data(Qt::UserRole + 2).toString();
+    const QString type = index.data(Qt::UserRole + 2).toString();
+    const QString iconName = index.data(Qt::UserRole + 1).toString();
+    const bool isClipboardImage = type == "Clipboard" && QFileInfo(iconName).isAbsolute() && QFileInfo::exists(iconName);
+
     if (type == "time") {
         paintTimeItem(painter, option, index);
+    } else if (isClipboardImage) {
+        paintImageItem(painter, option, index);
     } else {
         paintDefaultItem(painter, option, index);
     }
@@ -326,12 +331,79 @@ void ModernItemDelegate::paintTimeItem(QPainter* painter, const QStyleOptionView
     }
 }
 
+void ModernItemDelegate::paintImageItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const {
+    const QRect rect = option.rect;
+    const bool isSelected = option.state & QStyle::State_Selected;
+
+    if (const bool isHovered = option.state & QStyle::State_MouseOver; isSelected || isHovered) {
+        QPainterPath path;
+        path.addRoundedRect(rect.adjusted(8, 4, -8, -4), 8, 8);
+
+        if (isSelected) {
+            QLinearGradient gradient(rect.topLeft(), rect.bottomLeft());
+            gradient.setColorAt(0, m_selectedColor.lighter(120));
+            gradient.setColorAt(0.5, m_selectedColor);
+            gradient.setColorAt(1, m_selectedColor.darker(110));
+            painter->fillPath(path, gradient);
+            painter->setPen(QPen(QColor(255, 255, 255, 60), 1));
+            painter->drawPath(path);
+        } else if (isHovered) {
+            constexpr auto hoverBg = QColor(255, 255, 255, 15);
+            painter->fillPath(path, hoverBg);
+            painter->setPen(QPen(QColor(255, 255, 255, 30), 1));
+            painter->drawPath(path);
+        }
+    }
+
+    const QString title = index.data(Qt::DisplayRole).toString();
+    const QString subtitle = index.data(Qt::UserRole).toString();
+    const QString iconName = index.data(Qt::UserRole + 1).toString();
+
+    QRect imageRect(rect.left() + 20, rect.center().y() - 32, 64, 64);
+    if (const QPixmap pixmap(iconName); !pixmap.isNull()) {
+        QPainterPath clipPath;
+        clipPath.addRoundedRect(imageRect, 6, 6);
+        painter->save();
+        painter->setClipPath(clipPath);
+        painter->drawPixmap(imageRect, pixmap.scaled(imageRect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation));
+        painter->restore();
+    }
+
+    const QRect textRect = rect.adjusted(imageRect.right() + 16, 0, -50, 0);
+    const QFontMetrics titleMetrics(m_titleFont);
+    const QFontMetrics subtitleMetrics(m_subtitleFont);
+    const QString elidedTitle = titleMetrics.elidedText(title, Qt::ElideRight, textRect.width());
+    const int totalTextHeight = titleMetrics.height() + subtitleMetrics.height() + 4;
+    int textY = textRect.top() + (textRect.height() - totalTextHeight) / 2;
+
+    painter->setPen(isSelected ? QColor("#FFFFFF") : m_textColor);
+    painter->setFont(m_titleFont);
+    painter->drawText(QRect(textRect.left(), textY, textRect.width(), titleMetrics.height()), Qt::AlignLeft | Qt::AlignVCenter, elidedTitle);
+
+    textY += titleMetrics.height() + 4;
+    painter->setPen(isSelected ? QColor("#E5E7EB") : m_subtitleColor);
+    painter->setFont(m_subtitleFont);
+    painter->drawText(QRect(textRect.left(), textY, textRect.width(), subtitleMetrics.height()), Qt::AlignLeft | Qt::AlignVCenter, subtitle);
+
+    if (isSelected) {
+        painter->setPen(QColor(255, 255, 255, 220));
+        painter->setFont(QFont("SF Pro Display", 14, QFont::Normal));
+        painter->drawText(rect.adjusted(0, 0, -20, 0), Qt::AlignRight | Qt::AlignVCenter, "⏎");
+    }
+}
+
 QSize ModernItemDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     Q_UNUSED(option)
     if (const QString type = index.data(Qt::UserRole + 2).toString(); type == "time") {
-        return QSize(0, WindowUI::TIME_ITEM_HEIGHT + 10);
+        return {0, WindowUI::TIME_ITEM_HEIGHT + 10};
     }
-    return QSize(0, WindowUI::ITEM_HEIGHT + 2);
+    if (const QString type = index.data(Qt::UserRole + 2).toString(); type == "Clipboard") {
+        if (const QString iconName = index.data(Qt::UserRole + 1).toString();
+            QFileInfo(iconName).isAbsolute() && QFileInfo::exists(iconName)) {
+            return {0, WindowUI::IMAGE_ITEM_HEIGHT + 2};
+        }
+    }
+    return {0, WindowUI::ITEM_HEIGHT + 2};
 }
 
 WindowUI::WindowUI(QWidget* parent)

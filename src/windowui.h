@@ -28,6 +28,7 @@ public:
 private:
     void paintDefaultItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const;
     void paintTimeItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const;
+    void paintImageItem(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const;
     static QIcon loadIcon(const QString& iconName);
 
     QFont m_titleFont;
@@ -66,6 +67,7 @@ public:
 
     static constexpr int ITEM_HEIGHT = 40;
     static constexpr int TIME_ITEM_HEIGHT = 130;
+    static constexpr int IMAGE_ITEM_HEIGHT = 80;
     static constexpr int SEARCH_HEIGHT = 50;
     static constexpr int MAX_VISIBLE_ITEMS = 8;
     static constexpr int WINDOW_WIDTH = 680;
