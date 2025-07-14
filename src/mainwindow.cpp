@@ -4,6 +4,7 @@
 #include "features/system_commands.h"
 #include "features/search.h"
 #include "features/time_conversion.h"
+#include "features/clipboard.h"
 #include <QApplication>
 #include <QGuiApplication>
 
@@ -48,6 +49,7 @@ void MainWindow::setupFeatures() {
     m_features.append(new Calculator());
     m_features.append(new SystemCommands());
     m_features.append(new Time());
+    m_features.append(new Clipboard());
     updateResults();
 }
 

@@ -37,6 +37,8 @@ set(HEADERS
         src/features/search.h
         src/features/time_conversion.h
         src/third_party/exprtk.hpp
+        src/features/clipboard.cpp
+        src/features/clipboard.h
 )
 
 add_executable(rnux ${SOURCES} ${HEADERS})
